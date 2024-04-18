@@ -5,7 +5,6 @@
 [![codecov](https://img.shields.io/codecov/c/gh/waternumbers/rrdb/master)](https://app.codecov.io/gh/waternumbers/rrdb)
 [![rrdb statusbadge](https://waternumbers.r-universe.dev/badges/rrdb)](https://waternumbers.r-universe.dev)
 [![AppVeyor Build Status](https://ci.appveyor.com/api/projects/status/6k2cjqh1c8tn3k4w/branch/main?svg=true)](https://ci.appveyor.com/project/waternumbers/rrdb/branch/main)
-[![codecov](https://codecov.io/gh/waternumbers/rrdb/graph/badge.svg?token=1Q717OU78B)](https://codecov.io/gh/waternumbers/rrdb)
 <!-- badges: end -->
 
 This R package contains a simple round robin database for stroing time series
