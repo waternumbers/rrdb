@@ -14,7 +14,7 @@ update_db(fn, D, check = TRUE)
 \item{check}{should the age of the overwritten data be checked}
 }
 \value{
-Called for the bi-product of updating the data
+Invisible(TRUE) but Called for the bi-product of updating the data
 }
 \description{
 Adds data to the database overwriting existing data in a round robin fashion

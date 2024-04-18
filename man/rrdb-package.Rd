@@ -4,9 +4,9 @@
 \name{rrdb-package}
 \alias{rrdb}
 \alias{rrdb-package}
-\title{rrdb: A simple Round Robin Database}
+\title{rrdb: A Simple Round Robin Database}
 \description{
-A simple round robin database for storing fixed length histories oxf timeseries data. Inspired by whisperDB, but not feature or structure compatable.
+A simple round robin database for storing fixed length histories of timeseries data. Inspired by whisperDB, but not feature or structure compatable.
 }
 \seealso{
 Useful links:

@@ -5,28 +5,39 @@
 #' @param fn file name
 #' @param tz_step step of time series data in seconds
 #' @param n number of steps to store
-#' @param tz_origin origin of time steps in seconds
-#' @param size size in bits of the written number data
+#' @param m number of data points at each time step
+#' @param tz_origin origin of time steps in seconds 
+#' @param size size in bits of the written numeric data
 #'
-#' @return Called for the bi-product of creating the file
+#' @details The value tz_origin can be though off as the offset from 1970-01-01 00:00:00 (0 epoch time) of the closest observation time e.g is observations were record hourly at 5 minutes past the hour tz_step=3600 and tz_origin = 300
+#' 
+#' @return invisible(TRUE) but called for the bi-product of creating the file
 #' @export
-create_db <- function(fn,tz_step,n,tz_origin=0,size=8){
-    ## TODO error checking
-    tz_origin <- as.integer(tz_origin)
+create_db <- function(fn,tz_step,n,m,tz_origin=0,size=8){
+    ## convert to correct type
     tz_step <- as.integer(tz_step)
     n <- as.integer(n)
+    m <- as.integer(m)
+    tz_origin <- as.integer(tz_origin)
     sz <- as.integer(size)
 
+    ## error checks
+    stopifnot(
+        "step size must be positive integer" = tz_step > 0,
+        "number of steps must be a positive integer" = n>0,
+        "number of data points in each stap must be a positive integer" = m>0,
+        "number of bit for writing data must be a positive integer" = sz >0
+    )
+    
     ## create blank data to write
-    D <- rep(NA_real_,n*2)
-    D[seq(1,by=2,length=n)] <- rep(0,n) ##seq(tz_origin,by=tz_step,length=n)
+    D <- rep(NA_real_,n*(m+1))
+    D[seq(1,by=m+1,length=n)] <- rep(0,n)
 
     fh <- file(fn,"wb")
     on.exit(close(fh))
-    writeBin(c(tz_origin,tz_step,n,sz),fh,size=8)
+    writeBin(c(tz_step,n,m,tz_origin,sz),fh,size=8)
     writeBin(D,fh,size=sz)
-    ##close(fh)
-    fn
+    invisible(TRUE)
 }
 
 #' Update the data in a database
@@ -37,48 +48,53 @@ create_db <- function(fn,tz_step,n,tz_origin=0,size=8){
 #' @param D the xts data object to write to the file
 #' @param check should the age of the overwritten data be checked
 #'
-#' @return Called for the bi-product of updating the data
+#' @return Invisible(TRUE) but Called for the bi-product of updating the data
 #' @export
 update_db <- function(fn,D,check=TRUE){
-    fh <- file(fn,"r+b"); on.exit( close(fh) )
+    fh <- file(fn,"r+b")
+    on.exit( close(fh) )
     isSeekable(fh)
-    headerOffset <- 32
+    headerOffset <- 40 # 5 x 8 bits
     
     ## read header
-    tmp <- readBin(fh,"integer",4,size=8)
-    tz_origin <- as.integer(tmp[1])
-    tz_step <- as.integer(tmp[2])
-    n <- as.integer(tmp[3])
-    sz <- as.integer(tmp[4])
-
-    ## TODO check ts and D have the same dimensions and correct type
+    tmp <- readBin(fh,"integer",5,size=8)
+    tz_step <- as.integer(tmp[1])
+    n <- as.integer(tmp[2])
+    m <- as.integer(tmp[3])
+    tz_origin <- as.integer(tmp[4])
+    sz <- as.integer(tmp[5])
+    
+    ## check if D is the correct size
+    stopifnot(
+        "D has incorrect number of columns" = ncol(D) == m
+    )
+    
     ts <- as.numeric(index(D))
-    D <- as.numeric(D)
+    D <- as.matrix(D)
     
     ## add data
-    ##browser()
+    ## TODO - data is sequential in ts could use this to minimise seek times
     for(ii in 1:length(ts)){
         ## work out how far skip in the database to get to start of record
-        m <- ((ts[ii]-tz_origin)/tz_step) ## TODO check is integer
-        m <- m - (m%/%n)*n
-        m <- (2*m*sz) + headerOffset
+        jj <- (ts[ii]-tz_origin)/tz_step ## TODO check is integer
+        jj <- jj - (jj%/%n)*n
+        jj <- ((m+1)*jj*sz) + headerOffset
 
         if(check){
-            seek(fh, as.integer(m), origin = "start", rw = "read") ## move to that location
+            seek(fh, as.integer(jj), origin = "start", rw = "read") ## move to that location
             time_diff <- readBin(fh, what = "numeric", size = sz, n = 1L) - ts[ii] ## difference in time
-            if( time_diff > 0 ){ stop("Trying to replace newer data....") }
-            if( time_diff %/% (tz_step) != time_diff / (tz_step) ){
-                stop("Incorrect time location")
-            }
-            
+            stopifnot(
+                "Trying to replace newer data...." = time_diff <= 0,
+                "Incorrect time location" = time_diff %/% (tz_step) == time_diff / (tz_step)
+            )           
             seek(fh, -sz, origin = "current", rw = "write") ## move back one
-            writeBin(c(ts[ii],D[ii]), fh, size = sz) ## rewrite
+            writeBin(c(ts[ii],D[ii,]), fh, size = sz) ## rewrite
         }else{
-            seek(fh, as.integer(m), origin = "start", rw = "write")
-            writeBin(c(ts[ii],D[ii]), fh, size = sz)
+            seek(fh, as.integer(jj), origin = "start", rw = "write")
+            writeBin(c(ts[ii],D[ii,]), fh, size = sz)
         }
     }
-    ## close(fh)
+    invisible(TRUE)
 }
 
 #' Read data from the database
@@ -93,16 +109,18 @@ update_db <- function(fn,D,check=TRUE){
 #' @return an xts object containing any data in the time period
 #' @export
 read_db <- function(fn,strt,fnsh,tz="UTC"){
-    fh <- file(fn,"r+b"); on.exit( close(fh) )
+    fh <- file(fn,"r+b")
+    on.exit( close(fh) )
     isSeekable(fh)
-    headerOffset <- 32 # 4*8
+    headerOffset <- 40 # 5*8
     
     ## read header
-    tmp <- readBin(fh,"integer",4,size=8)
-    tz_origin <- tmp[1]
-    tz_step <- tmp[2]
-    n <- tmp[3]
-    sz <- tmp[4]
+    tmp <- readBin(fh,"integer",5,size=8)
+    tz_step <- as.integer(tmp[1])
+    n <- as.integer(tmp[2])
+    m <- as.integer(tmp[3])
+    tz_origin <- as.integer(tmp[4])
+    sz <- as.integer(tmp[5])
 
     istrt <- as.integer(strt)
     ifnsh <- as.integer(fnsh)
@@ -114,20 +132,20 @@ read_db <- function(fn,strt,fnsh,tz="UTC"){
     ms <- ms - (ms%/%n)*n
     mf <- mf - (mf%/%n)*n
     if(flg){ if(mf < n-1){ms <- mf+1}else{ ms <- 0 } }
-
+    
     if( mf<ms ) { mdx <- c(ms:(n-1),0:mf) }
     else{ mdx <- ms:mf }
 
-    mdx <- (2*mdx*sz) + headerOffset
+    mdx <- ((m+1)*mdx*sz) + headerOffset
     
-    out <- matrix(NA,length(mdx),2)
+    out <- matrix(NA,length(mdx),m+1)
     cnt <- 1
     for(mm in mdx){
         seek(fh, as.integer(mm), origin = "start", rw = "read") ## move to that location
-        out[cnt,] <- readBin(fh, what = "numeric", size = sz, n = 2L) ## difference in time
+        out[cnt,] <- readBin(fh, what = "numeric", size = sz, n = m+1L) ## difference in time
         cnt <- cnt + 1
     }
-    out <- xts(out[,2], order.by=as.POSIXct(out[,1],origin="1970-01-01 00:00:00",tz=tz))
-    out <- out[ index(out) >= strt & index(out)<=fnsh, ]
+    out <- xts(out[,-1,drop=FALSE], order.by=as.POSIXct(out[,1],origin="1970-01-01 00:00:00",tz=tz))
+    out <- out[ index(out) >= strt & index(out)<=fnsh, ] ## TODO check if this is needed?
     return(out)
 }

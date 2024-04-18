@@ -1,15 +1,15 @@
 Package: rrdb
 Type: Package
-Title: A simple Round Robin Database
+Title: A Simple Round Robin Database
 Version: 0.0.1
-Date: 2024-03-21
+Date: 2024-04-18
 Authors@R: 
     person(given = "Paul",
            family = "Smith",
            role = c("aut", "cre"),
            email = "paul@waternumbers.co.uk",
            comment = c(ORCID = "0000-0002-0034-3412"))
-Description: A simple round robin database for storing fixed length histories oxf timeseries data. Inspired by whisperDB, but not feature or structure compatable.
+Description: A simple round robin database for storing fixed length histories of timeseries data. Inspired by whisperDB, but not feature or structure compatable.
 License: GPL (>= 3)
 Encoding: UTF-8
 Depends: R (>= 4.0.0)

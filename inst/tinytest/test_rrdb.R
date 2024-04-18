@@ -1,6 +1,5 @@
 
 # Placeholder with simple test
-expect_equal(1 + 1, 2)
 library(xts)
 ## makse some test data
 ts <- seq( as.POSIXct("1990-01-01",tz="UTC"),as.POSIXct("1990-02-01",tz="UTC"),by=900 )
@@ -15,26 +14,25 @@ expect_silent({
     tz_origin <- 0
     tz_step <- 900
     n <- nrow(D)-20
-    create_db(fn,tz_step,n,tz_origin = tz_origin)
+    create_db(fn,tz_step,n,ncol(D),tz_origin = tz_origin)
 })
 
 ## write into data base
-nw <- nrow(D)-20
 expect_silent({
-    update_db(fn,D[1:nw,])
+    update_db(fn,D[1:n,])
 })
 
 ## read all data
 expect_silent({
-    tmp <- read_db(fn,index(D)[1],index(D)[nw])
+    tmp <- read_db(fn,index(D)[1],index(D)[n])
 })
-expect_equal( tmp, D[1:nw,] )
+expect_equal( tmp, D[1:n,] )
 
 ## read partial data
 expect_silent({
-    tmp <- read_db(fn,index(D)[10],index(D)[nw-5])
+    tmp <- read_db(fn,index(D)[10],index(D)[n-5])
 })
-expect_equal( tmp, D[10:(nw-5),] )
+expect_equal( tmp, D[10:(n-5),] )
 
 ## overwrite
 expect_silent({

@@ -4,7 +4,7 @@
 \alias{create_db}
 \title{Create a database}
 \usage{
-create_db(fn, tz_step, n, tz_origin = 0, size = 8)
+create_db(fn, tz_step, n, m, tz_origin = 0, size = 8)
 }
 \arguments{
 \item{fn}{file name}
@@ -13,13 +13,18 @@ create_db(fn, tz_step, n, tz_origin = 0, size = 8)
 
 \item{n}{number of steps to store}
 
+\item{m}{number of data points at each time step}
+
 \item{tz_origin}{origin of time steps in seconds}
 
-\item{size}{size in bits of the written number data}
+\item{size}{size in bits of the written numeric data}
 }
 \value{
-Called for the bi-product of creating the file
+invisible(TRUE) but called for the bi-product of creating the file
 }
 \description{
 Create a round robin database for a series of numeric data collected at regular time intervals
+}
+\details{
+The value tz_origin can be though off as the offset from 1970-01-01 00:00:00 (0 epoch time) of the closest observation time e.g is observations were record hourly at 5 minutes past the hour tz_step=3600 and tz_origin = 300
 }

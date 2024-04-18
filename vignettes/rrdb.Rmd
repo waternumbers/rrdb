@@ -1,2 +1,80 @@
-# This is a test change
+---
+title: "Notes on rrdb"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Notes on rrdb}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+                    collapse = TRUE,
+                    comment = "#>"
+                  )
+
+```
+
+# Usage
+
+The three function in the packages allow for the creation and manipulation of
+the database file.
+
+First load the library and create some test data
+
+```{r setup}
+library(rrdb)
+library(xts)
+
+ts <- seq( as.POSIXct("1990-01-01",tz="UTC"),as.POSIXct("1990-02-01",tz="UTC"),by=900 )
+D <- xts( 1:length(ts), order.by=ts )
+```
+
+Note that time step of the data is 900 seconds and that since there is
+potentially an observation at 1970-01-01 00:00:00 there is no offset on the
+origin of the timestep sequence.
+
+First let us create a database just smaller then the data
+
+```{r create_database}
+## use a tempory file
+fn <- tempfile()
+on.exit( unlink(fn) )
+
+tz_step <- 900
+n <- nrow(D)-20
+create_db(fn,tz_step,n,ncol(D))
+```
+
+Next write the first `n` data points to the database
+
+```{r update_database}
+update_db(fn,D[1:n,])
+```
+
+To read from the database we supply start and end times for the data. All data
+in this period will be returned as an xts object.
+
+```{r read_database}
+head( read_db(fn,index(D)[10],index(D)[n-5]) )
+```
+
+Updating the database with more data then it can hold will result in the
+most recent data being stored.
+
+```{r update_excess}
+update_db(fn,D)
+head( read_db(fn,index(D)[n],index(D)[nrow(D)]) )
+```
+
+# Implementation notes
+
+The functions are written in pure R. They are not especially efficent
+implimentation, particularly the calls to `seek` when writing and reading data
+are always made from the start of the file. Given both `xts` objects and the
+database are ordered this could be greatly improved.
+
+Using `clean=FALSE` when wrting tot he database can be much faster, however
+this removes all checks that stop newer data being overwritten by older values
+that may be passed in. With the check in place this results in an error.
 
