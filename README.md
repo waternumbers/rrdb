@@ -1,4 +1,4 @@
-# dynatopGIS
+# rrdb
 
 <!-- badges: start -->
 [![R-CMD-check](https://github.com/waternumbers/rrdb/workflows/R-CMD-check/badge.svg)](https://github.com/waternumbers/rrdb/actions)
